@@ -606,8 +606,17 @@ void SerialUIStateMachine(void)
             }
             else if('S' == gu8UartData)
             {
-            	FLib_MemCpy(gAppTxPacket->smacPdu.smacPdu, u8Prbs9Buffer, gKeyPressBufferLength_c);
+            	/* TODO: */
+            	gAppTxPacket->u8DataLength = gKeyPressBufferLength_c;
+            	FLib_MemCpy(&gAppTxPacket->smacPdu.smacPdu[0], KeyMessage, gKeyPressBufferLength_c);
+            	bTxDone = FALSE;
             	(void)MCPSDataRequest(gAppTxPacket);
+
+//            	 gAppTxPacket->smacPdu.smacPdu[0] = (u16TotalPackets >> 8);
+//            	        gAppTxPacket->smacPdu.smacPdu[1] = (uint8_t)u16TotalPackets;
+//            	        gAppTxPacket->smacPdu.smacPdu[2] = ((u16SentPackets+1) >> 8);
+//            	        gAppTxPacket->smacPdu.smacPdu[3] = (uint8_t)(u16SentPackets+1);
+//            	        FLib_MemCpy(&(gAppTxPacket->smacPdu.smacPdu[4]), "SMAC PER Demo",13);
             }
             evDataFromUART = FALSE;
             SelfNotificationEvent();

@@ -86,6 +86,7 @@ char * const cu8MainMenu[]={
   "\r -Press [2] Packet Error Rate test\n",
   "\r -Press [3] Range test\n",
   "\r -Press [4] Carrier Sense and Transmission Control menu\n",
+  "\r -Press [S] Send Equipo 3 message\n",
   "\r -Press [!] Reset MCU\n\r\n",
   NULL
 };
