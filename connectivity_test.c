@@ -606,7 +606,7 @@ void SerialUIStateMachine(void)
             }
             else if('S' == gu8UartData)
             {
-            	FLib_MemCpy(gAppTxPacket->smacPdu.smacPdu, u8Prbs9Buffer, gKeyPressBufferLength_c);
+            	FLib_MemCpy(gAppTxPacket->smacPdu.smacPdu, KeyMessage, gKeyPressBufferLength_c);
             	(void)MCPSDataRequest(gAppTxPacket);
             }
             evDataFromUART = FALSE;
@@ -913,8 +913,10 @@ bool_t SerialContinuousTxRxTest(void)
             if (gAppRxPacket->rxStatus == rxSuccessStatus_c)
             {
                 Serial_Print(mAppSer, "New Packet: ", gAllowToBlock_d);
+                Serial_Print(mAppSer, &(gAppRxPacket->smacPdu.smacPdu), gAllowToBlock_d);
                 for(u8Index = 0; u8Index < (gAppRxPacket->u8DataLength); u8Index++){
-                    Serial_PrintHex(mAppSer, &(gAppRxPacket->smacPdu.smacPdu[u8Index]), 1, 0);
+//                    Serial_PrintHex(mAppSer, &(gAppRxPacket->smacPdu.smacPdu[u8Index]), 1, 0);
+//                	Serial_Print(mAppSer, &(gAppRxPacket->smacPdu.smacPdu[u8Index]), gAllowToBlock_d);
                 }
                 Serial_Print(mAppSer, " \r\n", gAllowToBlock_d);
             }
