@@ -61,6 +61,9 @@ typedef uint32_t energy32_t;
 * Macros
 *************************************************************************************
 ************************************************************************************/
+#define gKeyPressBufferLength_c  (27)
+#define gButtonPressBufferLength_c (27)
+
 #define gPrbs9BufferLength_c	 ( 65 )
 #define gContTxModSelectPN9_c    ( 2 )
 #define gContTxModSelectOnes_c   ( 1 )
@@ -164,6 +167,9 @@ uint8_t          xtalTrimValue;
 AppToAspMessage_t aspTestRequestMsg;
 
 extern uint8_t u8Prbs9Buffer[gPrbs9BufferLength_c];
+
+uint8_t KeyMessage[] = {"Equipo 3, Tecla presionada\n"};
+uint8_t ButtonMessage[] = {"Equipo 3, Boton presionado\n"};
 /************************************************************************************
 *************************************************************************************
 * Private memory declarations
@@ -597,6 +603,11 @@ void SerialUIStateMachine(void)
             else if('!' == gu8UartData)
             {
                 ResetMCU();
+            }
+            else if('S' == gu8UartData)
+            {
+            	FLib_MemCpy(gAppTxPacket->smacPdu.smacPdu, u8Prbs9Buffer, gKeyPressBufferLength_c);
+            	(void)MCPSDataRequest(gAppTxPacket);
             }
             evDataFromUART = FALSE;
             SelfNotificationEvent();
@@ -2900,3 +2911,13 @@ static uint32_t HexString2Dec(uint8_t* hexString)
 
 /***********************************************************************
 ************************************************************************/
+
+
+/************************************************************************
+ ************************************************************************/
+
+void phaseI(){
+	FLib_MemCpy(gAppTxPacket->smacPdu.smacPdu, u8Prbs9Buffer, gKeyPressBufferLength_c);
+//	FLib_MemCpy(gAppTxPacket->smacPdu.smacPdu, ButtonMessage, gButtonPressBufferLength_c);
+}
+
