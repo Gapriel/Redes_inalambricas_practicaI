@@ -44,6 +44,8 @@
 
 #include "connectivity_test.h"
 #include "connectivity_test_platform.h"
+#include "FreeRTOS.h"
+#include "task.h"
 /************************************************************************************
 *************************************************************************************
 * Private type definitions
@@ -171,7 +173,6 @@ extern uint8_t u8Prbs9Buffer[gPrbs9BufferLength_c];
 uint8_t KeyMessage[] = {"Equipo 3, Tecla presionada\n"};
 uint8_t ButtonMessage[] = {"Equipo 3, Boton presionado\n"};
 
-extern bool g_ButtonPress;
 /************************************************************************************
 *************************************************************************************
 * Private memory declarations
@@ -205,6 +206,7 @@ static bool_t PacketErrorRateTx(void);
 static bool_t PacketErrorRateRx(void);
 static void SetRadioRxOnNoTimeOut(void);
 static void HandleEvents(int32_t evSignals);
+extern bool g_ButtonPress;
 
 static void PrintPerRxFinalLine(uint16_t u16Received, uint16_t u16Total);
 static bool_t stringComp(uint8_t * au8leftString, uint8_t * au8RightString, uint8_t bytesToCompare);
@@ -419,6 +421,24 @@ static void HandleEvents(int32_t evSignals)
 }
 
 
+void button_task(void* argument)
+{
+
+    while(1)
+    {
+    	if (g_ButtonPress)
+		{
+			g_ButtonPress = false;
+			GPIO_TogglePinsOutput(BOARD_LED_RED_GPIO, 1U << BOARD_LED_RED_GPIO_PIN);
+			gAppTxPacket->u8DataLength = gButtonPressBufferLength_c;
+			FLib_MemCpy(&gAppTxPacket->smacPdu.smacPdu[0], ButtonMessage, gButtonPressBufferLength_c);
+			bTxDone = FALSE;
+			(void)MCPSDataRequest(gAppTxPacket);
+		}
+    	vTaskDelay(100);
+    }
+}
+
 /*************************************************************************/
 /*Main Task: Application entry point*/
 /*************************************************************************/
@@ -483,7 +503,7 @@ void main_task(uint32_t param)
         {
             (void)OSA_EventWait(gTaskEvent, gEventsAll_c, FALSE, osaWaitForever_c ,&gTaskEventFlags);
             HandleEvents(gTaskEventFlags);
-            SerialUIStateMachine();  
+            SerialUIStateMachine();
             if (gUseRtos_c == 0)
             {
                 break;
@@ -558,7 +578,7 @@ void SerialUIStateMachine(void)
         connState = gConnSelectTest_c;
         break;
     case gConnSelectTest_c:
-        if(evDataFromUART){
+    	if(evDataFromUART){
             if('1' == gu8UartData)
             {
                 cTxRxState = gCTxRxStateInit_c;
@@ -609,6 +629,7 @@ void SerialUIStateMachine(void)
             else if('S' == gu8UartData)
             {
             	/* TODO: */
+            	GPIO_TogglePinsOutput(BOARD_LED_RED_GPIO, 1U << BOARD_LED_RED_GPIO_PIN);
             	gAppTxPacket->u8DataLength = gKeyPressBufferLength_c;
             	FLib_MemCpy(&gAppTxPacket->smacPdu.smacPdu[0], KeyMessage, gKeyPressBufferLength_c);
             	bTxDone = FALSE;
@@ -623,15 +644,15 @@ void SerialUIStateMachine(void)
             evDataFromUART = FALSE;
             SelfNotificationEvent();
         }
-        else if (g_ButtonPress)
-        {
-        	g_ButtonPress = false;
-        	gAppTxPacket->u8DataLength = gButtonPressBufferLength_c;
-			FLib_MemCpy(&gAppTxPacket->smacPdu.smacPdu[0], ButtonMessage, gButtonPressBufferLength_c);
-			bTxDone = FALSE;
-			(void)MCPSDataRequest(gAppTxPacket);
-			SelfNotificationEvent();
-        }
+//        else if (g_ButtonPress)
+//        {
+//        	g_ButtonPress = false;
+//        	gAppTxPacket->u8DataLength = gButtonPressBufferLength_c;
+//			FLib_MemCpy(&gAppTxPacket->smacPdu.smacPdu[0], ButtonMessage, gButtonPressBufferLength_c);
+//			bTxDone = FALSE;
+//			(void)MCPSDataRequest(gAppTxPacket);
+//			SelfNotificationEvent();
+//        }
         break;
     case gConnContinuousTxRxState_c:
         if(SerialContinuousTxRxTest()) 

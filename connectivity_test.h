@@ -228,6 +228,7 @@ typedef enum MpmPerConfigStates_tag
 extern smacErrors_t smacToAppMlmeSap(smacToAppMlmeMessage_t* pMsg, instanceId_t instance);
 extern smacErrors_t smacToAppMcpsSap(smacToAppDataMessage_t* pMsg, instanceId_t instance);
 extern void InitApp();
+extern void button_task(void* argument);
 
 #endif /* __SMAC_APP_CONFIG_H__ */
 
