@@ -206,6 +206,19 @@ char * const cu8CsTcTestMenu[]={
   NULL
 };
 
+char * const SendReceivePacketsTxMenu[]={
+  "\r  ____________________________ \n",
+  "\r |                            |\n",
+  "\r |  SendReceivePackets Menu   |\n",
+  "\r |____________________________|\n\r\n",
+  "\r  -Press [1] Send packet with payload 1\n",
+  "\r  -Press [2] Send packet with variable payload\n",
+  "\r  -Press [3] Send characters\n",
+  "\r  -Press [4] Bridge\n",
+  "\r  -Press [p] Previous Menu\n\r\n",
+  NULL
+};
+
 char * const cu8SelectTags[] ={
   " Channel select ",
   "  Power select  ",

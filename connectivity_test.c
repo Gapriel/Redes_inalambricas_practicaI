@@ -622,6 +622,12 @@ void SerialUIStateMachine(void)
                 edCalState= gEdCalStateInit_c;
             }
 #endif
+            /* TODO */
+            else if('5' == gu8UartData)
+			{
+				cstcState = gCsTcStateInit_c;
+				connState = gConnCSenseAndTCtrl_c;
+			}
             else if('!' == gu8UartData)
             {
                 ResetMCU();
@@ -635,24 +641,10 @@ void SerialUIStateMachine(void)
             	bTxDone = FALSE;
             	(void)MCPSDataRequest(gAppTxPacket);
 
-//            	 gAppTxPacket->smacPdu.smacPdu[0] = (u16TotalPackets >> 8);
-//            	        gAppTxPacket->smacPdu.smacPdu[1] = (uint8_t)u16TotalPackets;
-//            	        gAppTxPacket->smacPdu.smacPdu[2] = ((u16SentPackets+1) >> 8);
-//            	        gAppTxPacket->smacPdu.smacPdu[3] = (uint8_t)(u16SentPackets+1);
-//            	        FLib_MemCpy(&(gAppTxPacket->smacPdu.smacPdu[4]), "SMAC PER Demo",13);
             }
             evDataFromUART = FALSE;
             SelfNotificationEvent();
         }
-//        else if (g_ButtonPress)
-//        {
-//        	g_ButtonPress = false;
-//        	gAppTxPacket->u8DataLength = gButtonPressBufferLength_c;
-//			FLib_MemCpy(&gAppTxPacket->smacPdu.smacPdu[0], ButtonMessage, gButtonPressBufferLength_c);
-//			bTxDone = FALSE;
-//			(void)MCPSDataRequest(gAppTxPacket);
-//			SelfNotificationEvent();
-//        }
         break;
     case gConnContinuousTxRxState_c:
         if(SerialContinuousTxRxTest()) 
@@ -954,7 +946,7 @@ bool_t SerialContinuousTxRxTest(void)
             if (gAppRxPacket->rxStatus == rxSuccessStatus_c)
             {
                 Serial_Print(mAppSer, "New Packet: ", gAllowToBlock_d);
-                Serial_Print(mAppSer, (gAppRxPacket->smacPdu.smacPdu), gAllowToBlock_d);
+                Serial_Print(mAppSer, (char*)&(gAppRxPacket->smacPdu.smacPdu), gAllowToBlock_d);
                 for(u8Index = 0; u8Index < (gAppRxPacket->u8DataLength); u8Index++){
 //                    Serial_PrintHex(mAppSer, &(gAppRxPacket->smacPdu.smacPdu[u8Index]), 1, 0);
 //                	Serial_Print(mAppSer, &(gAppRxPacket->smacPdu.smacPdu[u8Index]), gAllowToBlock_d);
