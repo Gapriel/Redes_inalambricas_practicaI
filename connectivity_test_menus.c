@@ -206,6 +206,7 @@ char * const cu8CsTcTestMenu[]={
   NULL
 };
 
+/*TODO*/
 char * const SendReceivePacketsTxMenu[]={
   "\r  ____________________________ \n",
   "\r |                            |\n",

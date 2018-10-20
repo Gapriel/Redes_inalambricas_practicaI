@@ -242,7 +242,7 @@ static bool_t ConfigureAlternatePan(void);
 extern void ReadRFRegs(registerAddressSize_t, registerAddressSize_t);
 extern void PrintTestParameters(bool_t bEraseLine);
 
-bool_t SendReceivePacketsTx(void);
+static bool_t SendReceivePacketsTxRx(void);
 /*************************************/
 /************************************************************************************
 *************************************************************************************
@@ -725,7 +725,7 @@ void SerialUIStateMachine(void)
 #endif
     /* TODO: */
     case gConnSendReceive_c:
-    	if (SendReceivePacketsTx())
+    	if (SendReceivePacketsTxRx())
     	{
     		connState = gConnIdleState_c;
 			SelfNotificationEvent();
@@ -752,7 +752,7 @@ void SerialUIStateMachine(void)
 * Send Receive Packets
 *
 ************************************************************************************/
-bool_t SendReceivePacketsTx(void)
+bool_t SendReceivePacketsTxRx(void)
 {
 	bool_t bBackFlag = FALSE;
 
