@@ -60,6 +60,8 @@ extern char * const cu8TxModTestTags[];
 extern char * const SendReceivePacketsTxMenu[];
 extern char * const SendReceivePacketsTxPayloadSize[];
 extern char * const SendReceivePacketsTxCharacters[];
+extern char * const SendReceivePacketsRxMenu[];
+
 /************************************************************************************
 *************************************************************************************
 * Module macros

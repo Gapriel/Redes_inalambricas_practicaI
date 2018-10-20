@@ -164,6 +164,7 @@ CSenseTCtrlStates_t   cstcState;
 smacTestMode_t contTestRunning;
 
 SendReceivePacketsTx_t sendRecevieTxState;
+SendReceivePacketsRx_t sendRecevieRxState;
 
 #if CT_Feature_Xtal_Trim
 uint8_t          xtalTrimValue;
@@ -687,7 +688,8 @@ void SerialUIStateMachine(void)
 			{
 
             	sendRecevieTxState = gSendReceivePacketsTxStateInit_c;
-				connState = gConnSendReceive_c;
+            	sendRecevieRxState = gSendReceivePacketsRxStateInit_c;
+            	connState = gConnSendReceive_c;
 			}
             else if('!' == gu8UartData)
             {
@@ -816,7 +818,7 @@ void SerialUIStateMachine(void)
     }
 }
 
-/* TODO: */
+/* TODO: sendReceiveTXRX */
 /************************************************************************************
 *
 * Send Receive Packets
@@ -962,52 +964,127 @@ bool_t SendReceivePacketsTx(void)
 }
 
 
-//bool_t SendReceivePacketsRx(void)
-//{
-//	bool_t bBackFlag = FALSE;
-//
-//    if(evTestParameters)
-//    {
-//        (void)MLMERXDisableRequest();
-//#if CT_Feature_Calibration
-//        (void)MLMESetAdditionalRFOffset(gOffsetIncrement);
-//#endif
-//        (void)MLMESetChannelRequest(testChannel);
-//        (void)MLMEPAOutputAdjust(testPower);
-//#if CT_Feature_Xtal_Trim
-//        aspTestRequestMsg.msgType = aspMsgTypeSetXtalTrimReq_c;
-//        aspTestRequestMsg.msgData.aspXtalTrim.trim = xtalTrimValue;
-//        (void)APP_ASP_SapHandler(&aspTestRequestMsg, 0);
-//#endif
-//        PrintTestParameters(TRUE);
-//        evTestParameters = FALSE;
-//    }
-//
-//    switch(sendRecevieTxState)
-//    {
-//    case gSendReceivePacketsTxStateInit_c:
-//    	PrintMenu(cu8ShortCutsBar, mAppSer);
-//    	PrintMenu(SendReceivePacketsTxMenu, mAppSer);
-//    	PrintTestParameters(FALSE);
-//    	shortCutsEnabled = TRUE;
-//		(void)MLMERXDisableRequest();
-//    	break;
-//    case gSendReceivePacketsTxSelectOption_c:
-//    	break;
-//    case gSendReceivePacketsTxWaitStartTest_c:
-//    	break;
-//    case gSendReceivePacketsTxStatePayload1Test_c:
-//    	break;
-//    case gSendReceivePacketsTxStatePayloadVTest_c:
-//    	break;
-//    case gSendReceivePacketsTxStateCharactersState_c:
-//    	break;
-//    default:
-//    	break;
-//    }
-//
-//	return bBackFlag;
-//}
+bool_t SendReceivePacketsRx(void)
+{
+	bool_t bBackFlag = FALSE;
+	static bool_t test_state = FALSE;
+	uint8_t payload_buffer[100];
+	uint8_t e8TempEnergyValue;
+
+    if(evTestParameters)
+    {
+        (void)MLMERXDisableRequest();
+#if CT_Feature_Calibration
+        (void)MLMESetAdditionalRFOffset(gOffsetIncrement);
+#endif
+        (void)MLMESetChannelRequest(testChannel);
+        (void)MLMEPAOutputAdjust(testPower);
+#if CT_Feature_Xtal_Trim
+        aspTestRequestMsg.msgType = aspMsgTypeSetXtalTrimReq_c;
+        aspTestRequestMsg.msgData.aspXtalTrim.trim = xtalTrimValue;
+        (void)APP_ASP_SapHandler(&aspTestRequestMsg, 0);
+#endif
+        PrintTestParameters(TRUE);
+        evTestParameters = FALSE;
+        if(TRUE == test_state)
+        {
+        	Serial_Print(mAppSer, "\n ", gAllowToBlock_d);
+        	(void)MLMERXEnableRequest(gAppRxPacket, 0);
+        }
+    }
+
+    if(evDataFromUART)
+    {
+    	if(' ' == gu8UartData)
+    	{
+    		gu8UartData = '\0';
+    		sendRecevieRxState = gSendReceivePacketsRxWaitStartTest_c;
+    		if(FALSE == test_state)
+    		{
+    			test_state = TRUE;
+    			(void)MLMERXEnableRequest(gAppRxPacket, 0);
+    			Serial_Print(mAppSer, "\nPress [Space Bar] to stop receiving broadcast packets\n\n ", gAllowToBlock_d);
+    		}
+    		else if(TRUE == test_state)
+    		{
+    			test_state = FALSE;
+    			Serial_Print(mAppSer, "\nPacket reception stopped\n\n ", gAllowToBlock_d);
+    			(void)MLMERXDisableRequest();
+    		}
+    	}
+    	else if('p' == gu8UartData)
+    	{
+    		gu8UartData = '\0';
+    		(void)MLMERXDisableRequest();
+    		sendRecevieRxState = gSendReceivePacketsRxStateIdle_c;
+    	}
+    }
+
+    switch(sendRecevieRxState)
+    {
+    case gSendReceivePacketsRxStateInit_c:
+    	PrintMenu(cu8ShortCutsBar, mAppSer);
+    	PrintMenu(SendReceivePacketsRxMenu, mAppSer);
+    	PrintTestParameters(FALSE);
+    	shortCutsEnabled = TRUE;
+		(void)MLMERXDisableRequest();
+    	break;
+    case gSendReceivePacketsRxStateIdle_c:
+    	bBackFlag = TRUE;
+    	break;
+    case gSendReceivePacketsRxWaitStartTest_c:
+		if(bRxDone)
+		{
+			e8TempEnergyValue = u8LastRxRssiValue;
+			GPIO_TogglePinsOutput(BOARD_LED_RED_GPIO, 1U << BOARD_LED_RED_GPIO_PIN);
+			if (gAppRxPacket->rxStatus == rxSuccessStatus_c)
+			{
+				uint8_t pay_size = (gAppRxPacket->smacPdu.smacPdu[0])-1;
+
+				Serial_Print(mAppSer, "Packet received, ", gAllowToBlock_d);
+
+				Serial_Print(mAppSer, "Payload: ", gAllowToBlock_d);
+				memset(payload_buffer,'\0',100);
+				for(uint8_t index = 1;index<pay_size+1;index++)
+				{
+					payload_buffer[index-1] = gAppRxPacket->smacPdu.smacPdu[index];
+				}
+				Serial_Print(mAppSer, (char*)&payload_buffer, gAllowToBlock_d);
+
+
+				Serial_Print(mAppSer, " Payload size: ", gAllowToBlock_d);
+				//prints the payload
+				Serial_PrintDec(mAppSer, pay_size);
+
+
+				Serial_Print(mAppSer, " LQI: ", gAllowToBlock_d);
+				Serial_PrintDec(mAppSer, e8TempEnergyValue);
+
+				uint8_t ledflash[] = {"ledflash\0"};
+				uint8_t ledoff[] = {"ledoff\0"};
+				if(0 == strcmp(payload_buffer,ledflash))
+				{
+					LED_StartSerialFlash(LED1);
+				}
+				else if (0 == strcmp(payload_buffer,ledoff))
+				{
+					LED_StopFlashingAllLeds();
+				}
+
+				Serial_Print(mAppSer, " \r\n", gAllowToBlock_d);
+			}
+			bRxDone = FALSE;
+			gAppRxPacket->u8MaxDataLength = gMaxSmacSDULength_c;
+			(void)MLMERXEnableRequest(gAppRxPacket, 0);
+		}
+    	break;
+    default:
+    	break;
+    }
+
+	return bBackFlag;
+}
+
 /************************************************************************************
 *
 * Continuous Tests State Machine
@@ -1217,7 +1294,6 @@ bool_t SerialContinuousTxRxTest(void)
         /*TODO: DATA RECEPTION*/
     	if(bRxDone)
         {
-    		GPIO_TogglePinsOutput(BOARD_LED_RED_GPIO, 1U << BOARD_LED_RED_GPIO_PIN);
     		if (gAppRxPacket->rxStatus == rxSuccessStatus_c)
             {
                 Serial_Print(mAppSer, "New Packet: ", gAllowToBlock_d);
@@ -3229,13 +3305,4 @@ static uint32_t HexString2Dec(uint8_t* hexString)
 
 /***********************************************************************
 ************************************************************************/
-
-
-/************************************************************************
- ************************************************************************/
-
-void phaseI(){
-	FLib_MemCpy(gAppTxPacket->smacPdu.smacPdu, u8Prbs9Buffer, gKeyPressBufferLength_c);
-//	FLib_MemCpy(gAppTxPacket->smacPdu.smacPdu, ButtonMessage, gButtonPressBufferLength_c);
-}
 

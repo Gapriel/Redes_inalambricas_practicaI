@@ -132,8 +132,15 @@ typedef enum SendReceivePacketsTx_tag
   gSendReceivePacketsTxStateInit_c = 0,
   gSendReceivePacketsTxSelectOption_c,
   gSendReceivePacketsTxStatePayloadVTest_c,
-  gSendReceivePacketsTxStateCharactersState_c
+  gSendReceivePacketsTxStateCharactersState_c,
 }SendReceivePacketsTx_t;
+
+typedef enum SendReceivePacketsRx_tag
+{
+  gSendReceivePacketsRxStateInit_c = 0,
+  gSendReceivePacketsRxStateIdle_c,
+  gSendReceivePacketsRxWaitStartTest_c,
+}SendReceivePacketsRx_t;
 
 typedef enum RangeTxStates_tag 
 {
