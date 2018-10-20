@@ -131,8 +131,6 @@ typedef enum SendReceivePacketsTx_tag
 {
   gSendReceivePacketsTxStateInit_c = 0,
   gSendReceivePacketsTxSelectOption_c,
-  gSendReceivePacketsTxWaitStartTest_c,
-  gSendReceivePacketsTxStatePayload1Test_c,
   gSendReceivePacketsTxStatePayloadVTest_c,
   gSendReceivePacketsTxStateCharactersState_c
 }SendReceivePacketsTx_t;
@@ -210,6 +208,14 @@ typedef enum dumpRegistersStates_tag
   gDRStateInit_c = 0,
   gDRStateDumpRegs_c
 }dRStates_t;
+
+enum optionTX_SendReceivePackets
+{
+	Payload1 = 1,
+	PayloadVariable,
+	PayloadCharacter,
+	BridgeMode
+};
 
 #if gMpmMaxPANs_c == 2
 typedef enum MpmPerConfigStates_tag

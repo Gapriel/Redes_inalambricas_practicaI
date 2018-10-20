@@ -46,6 +46,8 @@
 #include "connectivity_test_platform.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "fsl_lpuart_freertos.h"
+#include "fsl_lpuart.h"
 /************************************************************************************
 *************************************************************************************
 * Private type definitions
@@ -171,9 +173,20 @@ uint8_t          xtalTrimValue;
 AppToAspMessage_t aspTestRequestMsg;
 
 extern uint8_t u8Prbs9Buffer[gPrbs9BufferLength_c];
-
+uint8_t background_buffer[32];
 uint8_t KeyMessage[] = {"Equipo 3, Tecla presionada\n"};
 uint8_t ButtonMessage[] = {"Equipo 3, Boton presionado\n"};
+lpuart_rtos_config_t lpuart_config = {
+	    .baudrate = 115200,
+	    .parity = kLPUART_ParityDisabled,
+	    .stopbits = kLPUART_OneStopBit,
+	    .buffer = background_buffer,
+	    .buffer_size = sizeof(background_buffer),
+	};;
+lpuart_rtos_handle_t handle;
+struct _lpuart_handle t_handle;
+uint8_t recv_buffer[10];
+bool_t uartTaskEnable = false;
 
 /************************************************************************************
 *************************************************************************************
@@ -192,6 +205,8 @@ static rxPacket_t * gAppRxPacket;
 static uint8_t timePassed;
 static tmrTimerID_t RangeTestTmr;                                                     
 static tmrTimerID_t AppDelayTmr;
+
+static uint8_t payloadSize;
 /************************************************************************************
 *************************************************************************************
 * Private prototypes
@@ -243,7 +258,7 @@ extern void ReadRFRegs(registerAddressSize_t, registerAddressSize_t);
 extern void PrintTestParameters(bool_t bEraseLine);
 
 static bool_t SendReceivePacketsTx(void);
-static bool_t SendReceivePacketsRx(void);
+//static bool_t SendReceivePacketsRx(void);
 /*************************************/
 /************************************************************************************
 *************************************************************************************
@@ -441,6 +456,47 @@ void button_task(void* argument)
 		}
     	vTaskDelay(100);
     }
+}
+
+void uart_task(void* argument)
+{
+    int error;
+    size_t n;
+
+    lpuart_config.srcclk = CLOCK_GetFreq(kCLOCK_Osc0ErClk);
+    lpuart_config.base = LPUART0;
+
+    if (0 > LPUART_RTOS_Init(&handle, &t_handle, &lpuart_config))
+    {
+        vTaskSuspend(NULL);
+    }
+
+    /* Send data */
+	do
+	{
+		error = LPUART_RTOS_Receive(&handle, recv_buffer, sizeof(recv_buffer), &n);
+//		if (error == kStatus_LPUART_RxHardwareOverrun)
+//		{
+//			vTaskSuspend(NULL);
+//		}
+//		if (error == kStatus_LPUART_RxRingBufferOverrun)
+//		{
+//			vTaskSuspend(NULL);
+//		}
+
+		if (n > 0 && uartTaskEnable)
+		{
+//			/* send back the received data */
+//			LPUART_RTOS_Send(&handle, (uint8_t *)recv_buffer, n);
+			payloadSize = 2;
+			gAppTxPacket->u8DataLength = payloadSize;
+			FLib_MemCpy(&gAppTxPacket->smacPdu.smacPdu[0], (char*)&payloadSize, 1);
+			FLib_MemCpy(&gAppTxPacket->smacPdu.smacPdu[1], (char*)&recv_buffer[0], 1);
+			bTxDone = FALSE;
+			(void)MCPSDataRequest(gAppTxPacket);
+		}
+		vTaskDelay(50);
+	} while (kStatus_Success == error);
 }
 
 /*************************************************************************/
@@ -738,11 +794,11 @@ void SerialUIStateMachine(void)
     	}
     	else
     	{
-    		if (SendReceivePacketsRx())
-			{
-				connState = gConnIdleState_c;
-				SelfNotificationEvent();
-			}
+//    		if (SendReceivePacketsRx())
+//			{
+//				connState = gConnIdleState_c;
+//				SelfNotificationEvent();
+//			}
     	}
     	break;
     default:
@@ -768,9 +824,11 @@ void SerialUIStateMachine(void)
 ************************************************************************************/
 bool_t SendReceivePacketsTx(void)
 {
+	uint8_t counter;
 	bool_t bBackFlag = FALSE;
+	uint8_t option = 0;
 
-    if(evTestParameters)
+    if(evTestParameters && sendRecevieTxState != gSendReceivePacketsTxStateCharactersState_c)
     {
         (void)MLMERXDisableRequest();
 #if CT_Feature_Calibration
@@ -794,18 +852,107 @@ bool_t SendReceivePacketsTx(void)
     	PrintMenu(SendReceivePacketsTxMenu, mAppSer);
     	PrintTestParameters(FALSE);
     	shortCutsEnabled = TRUE;
-    	sendRecevieTxState = gSendReceivePacketsTxStateIdle_c;
+    	sendRecevieTxState = gSendReceivePacketsTxSelectOption_c;
 		(void)MLMERXDisableRequest();
     	break;
-    case gSendReceivePacketsTxStateIdle_c:
-    	break;
-    case gSendReceivePacketsTxWaitStartTest_c:
-    	break;
-    case gSendReceivePacketsTxStatePayload1Test_c:
+    case gSendReceivePacketsTxSelectOption_c:
+    	if(evDataFromUART)
+		{
+			if((gu8UartData >= '1') && (gu8UartData <= '4'))
+			{
+				option = gu8UartData - '0';
+				switch (option)
+				{
+				case Payload1:
+					payloadSize = Payload1 + 1;
+					gAppTxPacket->u8DataLength = payloadSize;
+					FLib_MemCpy(&gAppTxPacket->smacPdu.smacPdu[0], (char*)&payloadSize, 1);
+					FLib_MemCpy(&gAppTxPacket->smacPdu.smacPdu[1], "1", 1);
+					bTxDone = FALSE;
+					(void)MCPSDataRequest(gAppTxPacket);
+					Serial_Print(mAppSer, "\r\n'1' was sent over the air", gAllowToBlock_d);
+					sendRecevieTxState = gSendReceivePacketsTxStateInit_c;
+					break;
+				case PayloadVariable:
+					payloadSize = 0;
+					sendRecevieTxState = gSendReceivePacketsTxStatePayloadVTest_c;
+					PrintMenu(SendReceivePacketsTxPayloadSize, mAppSer);
+					break;
+				case PayloadCharacter:
+					payloadSize = 0;
+					sendRecevieTxState = gSendReceivePacketsTxStateCharactersState_c;
+					PrintMenu(SendReceivePacketsTxCharacters, mAppSer);
+					break;
+				case BridgeMode:
+					uartTaskEnable = TRUE;
+					break;
+				default:
+					break;
+				}
+			}
+			else if('p' == gu8UartData)
+			{
+				uartTaskEnable = FALSE;
+				bBackFlag = TRUE;
+			}
+			evDataFromUART = FALSE;
+		}
     	break;
     case gSendReceivePacketsTxStatePayloadVTest_c:
+    	if(evDataFromUART)
+		{
+    		if((gu8UartData >= '1') && (gu8UartData <= '9'))
+			{
+    			payloadSize = gu8UartData - '0' + 1;
+    			gAppTxPacket->u8DataLength = payloadSize;
+    			FLib_MemCpy(&gAppTxPacket->smacPdu.smacPdu[0], (char*)&payloadSize, 1);
+    			Serial_Print(mAppSer, "\r\n'", gAllowToBlock_d);
+    			for (counter = '1'; counter<=gu8UartData; counter++)
+    			{
+    				FLib_MemCpy(&gAppTxPacket->smacPdu.smacPdu[counter-'0'], (char*)&counter, 1);
+    				Serial_Print(mAppSer, (char*)&counter, gAllowToBlock_d);
+    			}
+    			bTxDone = FALSE;
+				(void)MCPSDataRequest(gAppTxPacket);
+				sendRecevieTxState = gSendReceivePacketsTxStateInit_c;
+				Serial_Print(mAppSer, "' was sent over the air", gAllowToBlock_d);
+			}
+			else if('p' == gu8UartData)
+			{
+				bBackFlag = TRUE;
+			}
+			evDataFromUART = FALSE;
+		}
     	break;
     case gSendReceivePacketsTxStateCharactersState_c:
+    	if(evDataFromUART || evTestParameters)
+		{
+    		if ('\r' == gu8UartData)
+    		{
+    			bTxDone = FALSE;
+    			payloadSize++;
+    			gAppTxPacket->u8DataLength = payloadSize;
+    			FLib_MemCpy(&gAppTxPacket->smacPdu.smacPdu[0], (char*)&payloadSize, 1);
+    			Serial_Print(mAppSer, "\r\n'", gAllowToBlock_d);
+				Serial_Print(mAppSer, (char*)&gAppTxPacket->smacPdu.smacPdu[1], gAllowToBlock_d);
+				sendRecevieTxState = gSendReceivePacketsTxStateInit_c;
+    			Serial_Print(mAppSer, "' was sent over the air", gAllowToBlock_d);
+    			(void)MCPSDataRequest(gAppTxPacket);
+    		}
+    		else if ('*' == gu8UartData)
+    		{
+    			bBackFlag = TRUE;
+    		}
+    		else
+    		{
+    			payloadSize++;
+    			gAppTxPacket->u8DataLength = payloadSize;
+    			FLib_MemCpy(&gAppTxPacket->smacPdu.smacPdu[payloadSize], (char*)&gu8UartData, 1);
+    			Serial_Print(mAppSer, (char*)&gu8UartData, gAllowToBlock_d);
+    		}
+    		evDataFromUART = FALSE;
+    		evTestParameters = FALSE;
+		}
     	break;
     default:
     	break;
@@ -815,52 +962,52 @@ bool_t SendReceivePacketsTx(void)
 }
 
 
-bool_t SendReceivePacketsRx(void)
-{
-	bool_t bBackFlag = FALSE;
-
-    if(evTestParameters)
-    {
-        (void)MLMERXDisableRequest();
-#if CT_Feature_Calibration
-        (void)MLMESetAdditionalRFOffset(gOffsetIncrement);
-#endif
-        (void)MLMESetChannelRequest(testChannel);
-        (void)MLMEPAOutputAdjust(testPower);
-#if CT_Feature_Xtal_Trim
-        aspTestRequestMsg.msgType = aspMsgTypeSetXtalTrimReq_c;
-        aspTestRequestMsg.msgData.aspXtalTrim.trim = xtalTrimValue;
-        (void)APP_ASP_SapHandler(&aspTestRequestMsg, 0);
-#endif
-        PrintTestParameters(TRUE);
-        evTestParameters = FALSE;
-    }
-
-    switch(sendRecevieTxState)
-    {
-    case gSendReceivePacketsTxStateInit_c:
-    	PrintMenu(cu8ShortCutsBar, mAppSer);
-    	PrintMenu(SendReceivePacketsTxMenu, mAppSer);
-    	PrintTestParameters(FALSE);
-    	shortCutsEnabled = TRUE;
-		(void)MLMERXDisableRequest();
-    	break;
-    case gSendReceivePacketsTxStateIdle_c:
-    	break;
-    case gSendReceivePacketsTxWaitStartTest_c:
-    	break;
-    case gSendReceivePacketsTxStatePayload1Test_c:
-    	break;
-    case gSendReceivePacketsTxStatePayloadVTest_c:
-    	break;
-    case gSendReceivePacketsTxStateCharactersState_c:
-    	break;
-    default:
-    	break;
-    }
-
-	return bBackFlag;
-}
+//bool_t SendReceivePacketsRx(void)
+//{
+//	bool_t bBackFlag = FALSE;
+//
+//    if(evTestParameters)
+//    {
+//        (void)MLMERXDisableRequest();
+//#if CT_Feature_Calibration
+//        (void)MLMESetAdditionalRFOffset(gOffsetIncrement);
+//#endif
+//        (void)MLMESetChannelRequest(testChannel);
+//        (void)MLMEPAOutputAdjust(testPower);
+//#if CT_Feature_Xtal_Trim
+//        aspTestRequestMsg.msgType = aspMsgTypeSetXtalTrimReq_c;
+//        aspTestRequestMsg.msgData.aspXtalTrim.trim = xtalTrimValue;
+//        (void)APP_ASP_SapHandler(&aspTestRequestMsg, 0);
+//#endif
+//        PrintTestParameters(TRUE);
+//        evTestParameters = FALSE;
+//    }
+//
+//    switch(sendRecevieTxState)
+//    {
+//    case gSendReceivePacketsTxStateInit_c:
+//    	PrintMenu(cu8ShortCutsBar, mAppSer);
+//    	PrintMenu(SendReceivePacketsTxMenu, mAppSer);
+//    	PrintTestParameters(FALSE);
+//    	shortCutsEnabled = TRUE;
+//		(void)MLMERXDisableRequest();
+//    	break;
+//    case gSendReceivePacketsTxSelectOption_c:
+//    	break;
+//    case gSendReceivePacketsTxWaitStartTest_c:
+//    	break;
+//    case gSendReceivePacketsTxStatePayload1Test_c:
+//    	break;
+//    case gSendReceivePacketsTxStatePayloadVTest_c:
+//    	break;
+//    case gSendReceivePacketsTxStateCharactersState_c:
+//    	break;
+//    default:
+//    	break;
+//    }
+//
+//	return bBackFlag;
+//}
 /************************************************************************************
 *
 * Continuous Tests State Machine

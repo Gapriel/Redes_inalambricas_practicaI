@@ -220,6 +220,16 @@ char * const SendReceivePacketsTxMenu[]={
   NULL
 };
 
+char * const SendReceivePacketsTxPayloadSize[]={
+		"\n\rIndicate payload size: ",
+		NULL
+};
+
+char * const SendReceivePacketsTxCharacters[]={
+		"\n\rWrite a message: ",
+		NULL
+};
+
 char * const cu8SelectTags[] ={
   " Channel select ",
   "  Power select  ",
