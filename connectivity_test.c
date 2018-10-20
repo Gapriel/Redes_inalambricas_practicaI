@@ -162,6 +162,7 @@ CSenseTCtrlStates_t   cstcState;
 smacTestMode_t contTestRunning;
 
 SendReceivePacketsTx_t sendRecevieTxState;
+SendReceivePacketsRx_t sendRecevieRxState;
 
 #if CT_Feature_Xtal_Trim
 uint8_t          xtalTrimValue;
@@ -631,7 +632,8 @@ void SerialUIStateMachine(void)
 			{
 
             	sendRecevieTxState = gSendReceivePacketsTxStateInit_c;
-				connState = gConnSendReceive_c;
+            	sendRecevieRxState = gSendReceivePacketsRxStateInit_c;
+            	connState = gConnSendReceive_c;
 			}
             else if('!' == gu8UartData)
             {
@@ -760,7 +762,7 @@ void SerialUIStateMachine(void)
     }
 }
 
-/* TODO: */
+/* TODO: sendReceiveTXRX */
 /************************************************************************************
 *
 * Send Receive Packets
@@ -798,8 +800,6 @@ bool_t SendReceivePacketsTx(void)
     	break;
     case gSendReceivePacketsTxStateIdle_c:
     	break;
-    case gSendReceivePacketsTxWaitStartTest_c:
-    	break;
     case gSendReceivePacketsTxStatePayload1Test_c:
     	break;
     case gSendReceivePacketsTxStatePayloadVTest_c:
@@ -835,24 +835,32 @@ bool_t SendReceivePacketsRx(void)
         evTestParameters = FALSE;
     }
 
-    switch(sendRecevieTxState)
+    if(evDataFromUART)
     {
-    case gSendReceivePacketsTxStateInit_c:
+    	if(' ' == gu8UartData)
+    	{
+    		sendRecevieRxState = gSendReceivePacketsRxWaitStartTest_c;
+    	}
+    	else if('p' == gu8UartData)
+    	{
+    		sendRecevieRxState = gSendReceivePacketsRxStateIdle_c;
+    	}
+    }
+
+    switch(sendRecevieRxState)
+    {
+    case gSendReceivePacketsRxStateInit_c:
     	PrintMenu(cu8ShortCutsBar, mAppSer);
-    	PrintMenu(SendReceivePacketsTxMenu, mAppSer);
+    	PrintMenu(SendReceivePacketsRxMenu, mAppSer);
     	PrintTestParameters(FALSE);
     	shortCutsEnabled = TRUE;
 		(void)MLMERXDisableRequest();
     	break;
-    case gSendReceivePacketsTxStateIdle_c:
+    case gSendReceivePacketsRxStateIdle_c:
+    	bBackFlag = TRUE;
     	break;
-    case gSendReceivePacketsTxWaitStartTest_c:
-    	break;
-    case gSendReceivePacketsTxStatePayload1Test_c:
-    	break;
-    case gSendReceivePacketsTxStatePayloadVTest_c:
-    	break;
-    case gSendReceivePacketsTxStateCharactersState_c:
+    case gSendReceivePacketsRxWaitStartTest_c:
+
     	break;
     default:
     	break;
@@ -3081,13 +3089,4 @@ static uint32_t HexString2Dec(uint8_t* hexString)
 
 /***********************************************************************
 ************************************************************************/
-
-
-/************************************************************************
- ************************************************************************/
-
-void phaseI(){
-	FLib_MemCpy(gAppTxPacket->smacPdu.smacPdu, u8Prbs9Buffer, gKeyPressBufferLength_c);
-//	FLib_MemCpy(gAppTxPacket->smacPdu.smacPdu, ButtonMessage, gButtonPressBufferLength_c);
-}
 

@@ -220,6 +220,17 @@ char * const SendReceivePacketsTxMenu[]={
   NULL
 };
 
+/*TODO*/
+char * const SendReceivePacketsRxMenu[]={
+  "\r  ____________________________ \n",
+  "\r |                            |\n",
+  "\r |  SendReceivePackets Menu   |\n",
+  "\r |____________________________|\n\r\n",
+  "\r  -Press [space bar] to start/stop Receiving Packets\n",
+  "\r  -Press [p] Previous Menu\n\r\n",
+  NULL
+};
+
 char * const cu8SelectTags[] ={
   " Channel select ",
   "  Power select  ",
