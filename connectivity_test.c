@@ -1052,12 +1052,12 @@ bool_t SendReceivePacketsRx(void)
 				Serial_Print(mAppSer, (char*)&payload_buffer, gAllowToBlock_d);
 
 
-				Serial_Print(mAppSer, " Payload size: ", gAllowToBlock_d);
+				Serial_Print(mAppSer, ", Payload size: ", gAllowToBlock_d);
 				//prints the payload
 				Serial_PrintDec(mAppSer, pay_size);
 
 
-				Serial_Print(mAppSer, " LQI: ", gAllowToBlock_d);
+				Serial_Print(mAppSer, ", LQI: ", gAllowToBlock_d);
 				Serial_PrintDec(mAppSer, e8TempEnergyValue);
 
 				uint8_t ledflash[] = {"ledflash\0"};
