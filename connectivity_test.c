@@ -242,7 +242,8 @@ static bool_t ConfigureAlternatePan(void);
 extern void ReadRFRegs(registerAddressSize_t, registerAddressSize_t);
 extern void PrintTestParameters(bool_t bEraseLine);
 
-static bool_t SendReceivePacketsTxRx(void);
+static bool_t SendReceivePacketsTx(void);
+static bool_t SendReceivePacketsRx(void);
 /*************************************/
 /************************************************************************************
 *************************************************************************************
@@ -628,6 +629,7 @@ void SerialUIStateMachine(void)
             /* TODO */
             else if('5' == gu8UartData)
 			{
+
             	sendRecevieTxState = gSendReceivePacketsTxStateInit_c;
 				connState = gConnSendReceive_c;
 			}
@@ -637,7 +639,7 @@ void SerialUIStateMachine(void)
             }
             else if('S' == gu8UartData)
             {
-            	/* TODO: */
+            	/* TODO: button press*/
             	GPIO_TogglePinsOutput(BOARD_LED_RED_GPIO, 1U << BOARD_LED_RED_GPIO_PIN);
             	gAppTxPacket->u8DataLength = gKeyPressBufferLength_c;
             	FLib_MemCpy(&gAppTxPacket->smacPdu.smacPdu[0], KeyMessage, gKeyPressBufferLength_c);
@@ -656,6 +658,7 @@ void SerialUIStateMachine(void)
             SelfNotificationEvent();
         }
         break;
+        /*TODO: operation mode*/
     case gConnPerState_c:
         if(mTxOperation_c == testOpMode)
         {
@@ -723,12 +726,23 @@ void SerialUIStateMachine(void)
         }
         break;
 #endif
-    /* TODO: */
+    /* TODO: op mode */
     case gConnSendReceive_c:
-    	if (SendReceivePacketsTxRx())
+    	if(mTxOperation_c == testOpMode)
     	{
-    		connState = gConnIdleState_c;
-			SelfNotificationEvent();
+    		if (SendReceivePacketsTx())
+			{
+				connState = gConnIdleState_c;
+				SelfNotificationEvent();
+			}
+    	}
+    	else
+    	{
+    		if (SendReceivePacketsRx())
+			{
+				connState = gConnIdleState_c;
+				SelfNotificationEvent();
+			}
     	}
     	break;
     default:
@@ -752,7 +766,7 @@ void SerialUIStateMachine(void)
 * Send Receive Packets
 *
 ************************************************************************************/
-bool_t SendReceivePacketsTxRx(void)
+bool_t SendReceivePacketsTx(void)
 {
 	bool_t bBackFlag = FALSE;
 
@@ -800,6 +814,53 @@ bool_t SendReceivePacketsTxRx(void)
 	return bBackFlag;
 }
 
+
+bool_t SendReceivePacketsRx(void)
+{
+	bool_t bBackFlag = FALSE;
+
+    if(evTestParameters)
+    {
+        (void)MLMERXDisableRequest();
+#if CT_Feature_Calibration
+        (void)MLMESetAdditionalRFOffset(gOffsetIncrement);
+#endif
+        (void)MLMESetChannelRequest(testChannel);
+        (void)MLMEPAOutputAdjust(testPower);
+#if CT_Feature_Xtal_Trim
+        aspTestRequestMsg.msgType = aspMsgTypeSetXtalTrimReq_c;
+        aspTestRequestMsg.msgData.aspXtalTrim.trim = xtalTrimValue;
+        (void)APP_ASP_SapHandler(&aspTestRequestMsg, 0);
+#endif
+        PrintTestParameters(TRUE);
+        evTestParameters = FALSE;
+    }
+
+    switch(sendRecevieTxState)
+    {
+    case gSendReceivePacketsTxStateInit_c:
+    	PrintMenu(cu8ShortCutsBar, mAppSer);
+    	PrintMenu(SendReceivePacketsTxMenu, mAppSer);
+    	PrintTestParameters(FALSE);
+    	shortCutsEnabled = TRUE;
+		(void)MLMERXDisableRequest();
+    	break;
+    case gSendReceivePacketsTxStateIdle_c:
+    	break;
+    case gSendReceivePacketsTxWaitStartTest_c:
+    	break;
+    case gSendReceivePacketsTxStatePayload1Test_c:
+    	break;
+    case gSendReceivePacketsTxStatePayloadVTest_c:
+    	break;
+    case gSendReceivePacketsTxStateCharactersState_c:
+    	break;
+    default:
+    	break;
+    }
+
+	return bBackFlag;
+}
 /************************************************************************************
 *
 * Continuous Tests State Machine
