@@ -780,6 +780,7 @@ bool_t SendReceivePacketsTxRx(void)
     	PrintMenu(SendReceivePacketsTxMenu, mAppSer);
     	PrintTestParameters(FALSE);
     	shortCutsEnabled = TRUE;
+    	sendRecevieTxState = gSendReceivePacketsTxStateIdle_c;
 		(void)MLMERXDisableRequest();
     	break;
     case gSendReceivePacketsTxStateIdle_c:
