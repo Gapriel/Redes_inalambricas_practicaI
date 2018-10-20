@@ -161,6 +161,8 @@ dRStates_t          dRState;
 CSenseTCtrlStates_t   cstcState; 
 smacTestMode_t contTestRunning;
 
+SendReceivePacketsTx_t sendRecevieTxState;
+
 #if CT_Feature_Xtal_Trim
 uint8_t          xtalTrimValue;
 #endif
@@ -240,6 +242,7 @@ static bool_t ConfigureAlternatePan(void);
 extern void ReadRFRegs(registerAddressSize_t, registerAddressSize_t);
 extern void PrintTestParameters(bool_t bEraseLine);
 
+bool_t SendReceivePacketsTx(void);
 /*************************************/
 /************************************************************************************
 *************************************************************************************
@@ -625,8 +628,8 @@ void SerialUIStateMachine(void)
             /* TODO */
             else if('5' == gu8UartData)
 			{
-				cstcState = gCsTcStateInit_c;
-				connState = gConnCSenseAndTCtrl_c;
+            	sendRecevieTxState = gSendReceivePacketsTxStateInit_c;
+				connState = gConnSendReceive_c;
 			}
             else if('!' == gu8UartData)
             {
@@ -720,6 +723,14 @@ void SerialUIStateMachine(void)
         }
         break;
 #endif
+    /* TODO: */
+    case gConnSendReceive_c:
+    	if (SendReceivePacketsTx())
+    	{
+    		connState = gConnIdleState_c;
+			SelfNotificationEvent();
+    	}
+    	break;
     default:
         break;
         
@@ -733,6 +744,59 @@ void SerialUIStateMachine(void)
         prevOpMode = testOpMode;
         SelfNotificationEvent();
     }
+}
+
+/* TODO: */
+/************************************************************************************
+*
+* Send Receive Packets
+*
+************************************************************************************/
+bool_t SendReceivePacketsTx(void)
+{
+	bool_t bBackFlag = FALSE;
+
+    if(evTestParameters)
+    {
+        (void)MLMERXDisableRequest();
+#if CT_Feature_Calibration
+        (void)MLMESetAdditionalRFOffset(gOffsetIncrement);
+#endif
+        (void)MLMESetChannelRequest(testChannel);
+        (void)MLMEPAOutputAdjust(testPower);
+#if CT_Feature_Xtal_Trim
+        aspTestRequestMsg.msgType = aspMsgTypeSetXtalTrimReq_c;
+        aspTestRequestMsg.msgData.aspXtalTrim.trim = xtalTrimValue;
+        (void)APP_ASP_SapHandler(&aspTestRequestMsg, 0);
+#endif
+        PrintTestParameters(TRUE);
+        evTestParameters = FALSE;
+    }
+
+    switch(sendRecevieTxState)
+    {
+    case gSendReceivePacketsTxStateInit_c:
+    	PrintMenu(cu8ShortCutsBar, mAppSer);
+    	PrintMenu(SendReceivePacketsTxMenu, mAppSer);
+    	PrintTestParameters(FALSE);
+    	shortCutsEnabled = TRUE;
+		(void)MLMERXDisableRequest();
+    	break;
+    case gSendReceivePacketsTxStateIdle_c:
+    	break;
+    case gSendReceivePacketsTxWaitStartTest_c:
+    	break;
+    case gSendReceivePacketsTxStatePayload1Test_c:
+    	break;
+    case gSendReceivePacketsTxStatePayloadVTest_c:
+    	break;
+    case gSendReceivePacketsTxStateCharactersState_c:
+    	break;
+    default:
+    	break;
+    }
+
+	return bBackFlag;
 }
 
 /************************************************************************************
@@ -1119,7 +1183,7 @@ bool_t PacketErrorRateTx(void)
         PrintMenu(cu8ShortCutsBar, mAppSer);
         PrintMenu(cu8PerTxTestMenu, mAppSer);
         PrintTestParameters(FALSE);
-        shortCutsEnabled = TRUE;           
+        shortCutsEnabled = TRUE;
         perTxState = gPerTxStateSelectPacketNum_c;
         miliSecDelay = 0;
         u32MinDelay = 4;
