@@ -420,7 +420,7 @@ static void HandleEvents(int32_t evSignals)
     }
 }
 
-
+/*TODO: button task*/
 void button_task(void* argument)
 {
 
@@ -941,17 +941,27 @@ bool_t SerialContinuousTxRxTest(void)
         }
         break;
     case gCTxRxStateRunnigRxTest_c:
-        if(bRxDone)
+        /*TODO: DATA RECEPTION*/
+    	if(bRxDone)
         {
-            if (gAppRxPacket->rxStatus == rxSuccessStatus_c)
+    		GPIO_TogglePinsOutput(BOARD_LED_RED_GPIO, 1U << BOARD_LED_RED_GPIO_PIN);
+    		if (gAppRxPacket->rxStatus == rxSuccessStatus_c)
             {
                 Serial_Print(mAppSer, "New Packet: ", gAllowToBlock_d);
-                Serial_Print(mAppSer, (char*)&(gAppRxPacket->smacPdu.smacPdu), gAllowToBlock_d);
-                for(u8Index = 0; u8Index < (gAppRxPacket->u8DataLength); u8Index++){
-//                    Serial_PrintHex(mAppSer, &(gAppRxPacket->smacPdu.smacPdu[u8Index]), 1, 0);
-//                	Serial_Print(mAppSer, &(gAppRxPacket->smacPdu.smacPdu[u8Index]), gAllowToBlock_d);
+                if(
+                   (0 == strcmp((char*)&gAppRxPacket->smacPdu.smacPdu,(char*)&KeyMessage))
+                 ||(0 == strcmp((char*)&gAppRxPacket->smacPdu.smacPdu,(char*)&ButtonMessage))
+				  )
+                {
+                	Serial_Print(mAppSer, (char*)&(gAppRxPacket->smacPdu.smacPdu), gAllowToBlock_d);
                 }
-                Serial_Print(mAppSer, " \r\n", gAllowToBlock_d);
+                else
+                {
+					for(u8Index = 0; u8Index < (gAppRxPacket->u8DataLength); u8Index++){
+	                    Serial_PrintHex(mAppSer, &(gAppRxPacket->smacPdu.smacPdu[u8Index]), 1, 0);
+					}
+					Serial_Print(mAppSer, " \r\n", gAllowToBlock_d);
+            	}
             }
             bRxDone = FALSE;
             gAppRxPacket->u8MaxDataLength = gMaxSmacSDULength_c;
