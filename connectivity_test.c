@@ -1002,12 +1002,12 @@ bool_t SendReceivePacketsRx(void)
     		{
     			test_state = TRUE;
     			(void)MLMERXEnableRequest(gAppRxPacket, 0);
-    			Serial_Print(mAppSer, "\nPress [Space Bar] to stop receiving broadcast packets\n\r\n ", gAllowToBlock_d);
+    			Serial_Print(mAppSer, "\n\rPress [Space Bar] to stop receiving broadcast packets\n\r\n ", gAllowToBlock_d);
     		}
     		else if(TRUE == test_state)
     		{
     			test_state = FALSE;
-    			Serial_Print(mAppSer, "\nPacket reception stopped\n\r\n ", gAllowToBlock_d);
+    			Serial_Print(mAppSer, "\n\rPacket reception stopped\n\r\n ", gAllowToBlock_d);
     			(void)MLMERXDisableRequest();
     		}
     	}
@@ -1071,7 +1071,7 @@ bool_t SendReceivePacketsRx(void)
 					LED_StopFlashingAllLeds();
 				}
 
-				Serial_Print(mAppSer, " \n\r\n", gAllowToBlock_d);
+				Serial_Print(mAppSer, "\r\n", gAllowToBlock_d);
 			}
 			bRxDone = FALSE;
 			gAppRxPacket->u8MaxDataLength = gMaxSmacSDULength_c;
