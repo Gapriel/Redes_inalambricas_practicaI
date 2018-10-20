@@ -259,7 +259,7 @@ extern void ReadRFRegs(registerAddressSize_t, registerAddressSize_t);
 extern void PrintTestParameters(bool_t bEraseLine);
 
 static bool_t SendReceivePacketsTx(void);
-//static bool_t SendReceivePacketsRx(void);
+static bool_t SendReceivePacketsRx(void);
 /*************************************/
 /************************************************************************************
 *************************************************************************************
@@ -686,7 +686,6 @@ void SerialUIStateMachine(void)
             /* TODO */
             else if('5' == gu8UartData)
 			{
-
             	sendRecevieTxState = gSendReceivePacketsTxStateInit_c;
             	sendRecevieRxState = gSendReceivePacketsRxStateInit_c;
             	connState = gConnSendReceive_c;
@@ -796,11 +795,11 @@ void SerialUIStateMachine(void)
     	}
     	else
     	{
-//    		if (SendReceivePacketsRx())
-//			{
-//				connState = gConnIdleState_c;
-//				SelfNotificationEvent();
-//			}
+    		if (SendReceivePacketsRx())
+			{
+				connState = gConnIdleState_c;
+				SelfNotificationEvent();
+			}
     	}
     	break;
     default:
