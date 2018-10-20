@@ -83,7 +83,8 @@ typedef enum ConnectivityStates_tag
   gConnBitrateSelectState_c,
   gConnCSenseAndTCtrl_c,
   gConnEDMeasCalib_c,
-  gConnMaxState_c
+  gConnMaxState_c,
+  gConnSendReceive_c
 }ConnectivityStates_t;
 
 
@@ -125,6 +126,16 @@ typedef enum PerRxStates_tag
   gPerRxStateRunningTest_c,
   gPerrxStateMaxState_c
 }PerRxStates_t;
+
+typedef enum SendReceivePacketsTx_tag
+{
+  gSendReceivePacketsTxStateInit_c = 0,
+  gSendReceivePacketsTxStateIdle_c,
+  gSendReceivePacketsTxWaitStartTest_c,
+  gSendReceivePacketsTxStatePayload1Test_c,
+  gSendReceivePacketsTxStatePayloadVTest_c,
+  gSendReceivePacketsTxStateCharactersState_c
+}SendReceivePacketsTx_t;
 
 typedef enum RangeTxStates_tag 
 {
