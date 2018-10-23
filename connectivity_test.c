@@ -48,6 +48,7 @@
 #include "task.h"
 #include "fsl_lpuart_freertos.h"
 #include "fsl_lpuart.h"
+#include "fsl_adc16.h"
 /************************************************************************************
 *************************************************************************************
 * Private type definitions
@@ -188,6 +189,7 @@ lpuart_rtos_handle_t handle;
 struct _lpuart_handle t_handle;
 uint8_t recv_buffer[10];
 bool_t uartTaskEnable = false;
+adc16_channel_config_t adc16ChannelConfigStruct;
 
 /************************************************************************************
 *************************************************************************************
@@ -459,45 +461,31 @@ void button_task(void* argument)
     }
 }
 
-void uart_task(void* argument)
+void adc_task(void* argument)
 {
-    int error;
-    size_t n;
-
-    lpuart_config.srcclk = CLOCK_GetFreq(kCLOCK_Osc0ErClk);
-    lpuart_config.base = LPUART0;
-
-    if (0 > LPUART_RTOS_Init(&handle, &t_handle, &lpuart_config))
-    {
-        vTaskSuspend(NULL);
-    }
-
+	uint8_t adcValue;
     /* Send data */
-	do
+	while(1)
 	{
-		error = LPUART_RTOS_Receive(&handle, recv_buffer, sizeof(recv_buffer), &n);
-//		if (error == kStatus_LPUART_RxHardwareOverrun)
-//		{
-//			vTaskSuspend(NULL);
-//		}
-//		if (error == kStatus_LPUART_RxRingBufferOverrun)
-//		{
-//			vTaskSuspend(NULL);
-//		}
-
-		if (n > 0 && uartTaskEnable)
+		LPUART_RTOS_Receive(&handle, recv_buffer, sizeof(recv_buffer), NULL);
+		if (uartTaskEnable)
 		{
-//			/* send back the received data */
-//			LPUART_RTOS_Send(&handle, (uint8_t *)recv_buffer, n);
+			ADC16_SetChannelConfig(ADC0, 0, &adc16ChannelConfigStruct);
+			while (0U == (kADC16_ChannelConversionDoneFlag &
+						  ADC16_GetChannelStatusFlags(ADC0, 0)))
+			{
+			}
+			adcValue = ADC16_GetChannelConversionValue(ADC0, 0);
+
 			payloadSize = 2;
 			gAppTxPacket->u8DataLength = payloadSize;
 			FLib_MemCpy(&gAppTxPacket->smacPdu.smacPdu[0], (char*)&payloadSize, 1);
-			FLib_MemCpy(&gAppTxPacket->smacPdu.smacPdu[1], (char*)&recv_buffer[0], 1);
+			FLib_MemCpy(&gAppTxPacket->smacPdu.smacPdu[1], (char*)&adcValue, 1);
 			bTxDone = FALSE;
 			(void)MCPSDataRequest(gAppTxPacket);
 		}
 		vTaskDelay(50);
-	} while (kStatus_Success == error);
+	}
 }
 
 /*************************************************************************/
